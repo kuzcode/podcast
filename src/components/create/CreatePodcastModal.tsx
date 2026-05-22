@@ -63,8 +63,8 @@ export function CreatePodcastModal({ open, onClose, onCreated }: CreatePodcastMo
         >
           <Sparkles className={styles.heroIcon} size={32} />
           <p>
-            Вставьте ссылку на YouTube — аудио и обложка подтянутся автоматически, без
-            загрузки в Storage
+            Ссылка на YouTube — главное аудио. Обложка подтянется, если получится; без неё
+            тоже можно слушать.
           </p>
         </motion.div>
 
@@ -91,7 +91,7 @@ export function CreatePodcastModal({ open, onClose, onCreated }: CreatePodcastMo
           </p>
           <ul>
             <li>YouTube — видео, Shorts, youtu.be</li>
-            <li>Аудио хранится по прямой ссылке (не в bucket)</li>
+            <li>Аудио через сервер приложения (стабильное воспроизведение)</li>
           </ul>
         </div>
 

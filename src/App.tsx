@@ -8,7 +8,6 @@ import { AccountPage } from '@/pages/AccountPage'
 import { useAuthStore } from '@/store/authStore'
 import { usePlayerStore } from '@/store/playerStore'
 import { getPodcast } from '@/api/podcasts'
-import { initTelegramApp } from '@/lib/telegram'
 import '@/styles/globals.css'
 
 function DeepLinkHandler() {
@@ -29,10 +28,9 @@ function DeepLinkHandler() {
 }
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { isLoading, isAuthenticated, error, init } = useAuthStore()
+  const { isLoading, isAuthenticated, error, errorHint, init } = useAuthStore()
 
   useEffect(() => {
-    initTelegramApp()
     init()
   }, [init])
 
@@ -80,12 +78,29 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated && error) {
     return (
       <div className="auth-loading">
-        <p style={{ color: 'var(--burgundy-light)', textAlign: 'center', padding: '0 24px' }}>
+        <p
+          style={{
+            color: 'var(--burgundy-light)',
+            textAlign: 'center',
+            padding: '0 24px',
+            lineHeight: 1.5,
+          }}
+        >
           {error}
         </p>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-          Откройте приложение через бота в Telegram
-        </p>
+        {errorHint && (
+          <p
+            style={{
+              color: 'var(--text-muted)',
+              fontSize: '0.8rem',
+              textAlign: 'center',
+              padding: '0 24px',
+              lineHeight: 1.4,
+            }}
+          >
+            {errorHint}
+          </p>
+        )}
       </div>
     )
   }

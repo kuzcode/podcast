@@ -89,12 +89,25 @@ npm run dev
 
 1. Репозиторий на GitHub → Import в Vercel.
 2. Environment Variables — все `VITE_*` из `.env`.
-3. Deploy.
-4. URL в BotFather → Mini App.
-5. `VITE_APP_URL` = тот же URL.
+3. **`VITE_DEV_MOCK_TELEGRAM=false`** на production (обязательно).
+4. Deploy.
+5. URL в BotFather → Mini App.
+6. `VITE_APP_URL` = тот же URL (без слэша в конце).
 
-**Извлечение аудио:** на Vercel работает `api/extract.js` (YouTube через Piped API).  
-Локально — тот же маршрут через Vite dev server.
+### ⚠️ Appwrite Platforms (иначе «Load failed»)
+
+В [Appwrite Console](https://cloud.appwrite.io) → ваш проект → **Settings** → **Platforms**:
+
+1. **Add platform** → **Web**
+2. Hostname: `podcast-five-sage.vercel.app` (ваш домен Vercel, **без** `https://`)
+3. Сохранить
+
+Без этого браузер в Telegram блокирует запросы к Appwrite.
+
+**Извлечение аудио:** `api/extract.js` (Piped + Invidious, запасная обложка i.ytimg.com).  
+Воспроизведение — через `api/audio-proxy` (обход CORS).  
+
+В `vercel.json` маршруты `/api/*` **не** должны уходить в `index.html` (уже настроено).
 
 ---
 

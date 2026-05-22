@@ -1,6 +1,7 @@
 import { databases, DB_ID, COL } from '@/lib/appwrite'
+import { formatAppwriteError, isNotFoundError } from '@/lib/appwriteError'
 import { DEFAULT_SETTINGS } from '@/lib/constants'
-import { getTelegramUser } from '@/lib/telegram'
+import { getTelegramUser, waitForTelegramUser } from '@/lib/telegram'
 import type { User, UserSettings, TelegramUser } from '@/types'
 
 function mapUser(doc: Record<string, unknown>): User {
@@ -29,12 +30,18 @@ function mapUser(doc: Record<string, unknown>): User {
   }
 }
 
-/** Вход без Functions: профиль Telegram → документ в Appwrite (ID = telegramId). */
+/** Вход: ждём Telegram → upsert в Appwrite. */
 export async function loginWithTelegram(): Promise<User> {
-  const tg = getTelegramUser()
-  if (!tg) throw new Error('Нет данных Telegram. Откройте приложение из бота.')
+  const tg = (await waitForTelegramUser()) ?? getTelegramUser()
+  if (!tg) {
+    throw new Error('TELEGRAM_USER_MISSING')
+  }
 
-  return upsertUser(tg)
+  try {
+    return await upsertUser(tg)
+  } catch (e) {
+    throw new Error(formatAppwriteError(e))
+  }
 }
 
 async function upsertUser(tg: TelegramUser): Promise<User> {
@@ -62,7 +69,9 @@ async function upsertUser(tg: TelegramUser): Promise<User> {
       isPremium: payload.isPremium,
     })
     return mapUser(updated as unknown as Record<string, unknown>)
-  } catch {
+  } catch (e) {
+    if (!isNotFoundError(e)) throw e
+
     const created = await databases.createDocument(DB_ID, COL.users, docId, payload)
     return mapUser(created as unknown as Record<string, unknown>)
   }
