@@ -76,9 +76,13 @@
 
 ### RapidAPI (обязательно для YouTube)
 
-1. [YouTube to Mp4/Mp3](https://rapidapi.com/openapis/api/youtube-to-mp4-mp3) → Subscribe → **Basic (Free)**  
-2. Скопируйте **X-RapidAPI-Key** → **`RAPIDAPI_KEY`** в `.env` и Vercel  
-3. Бесплатно ~100 запросов/день — достаточно для личного Mini App
+Страница **youtube-mp36** на RapidAPI больше не существует. Используйте один из актуальных API:
+
+1. **Рекомендуем:** [YouTube to mp3](https://rapidapi.com/marcocollatina/api/youtube-to-mp315) → **Subscribe** → **Basic ($0)**  
+2. Запасные (тот же ключ, отдельная подписка): [Youtube Mp3](https://rapidapi.com/codyseller99payme-Tsqa1Mnw8FL/api/youtube-mp37)  
+3. Скопируйте **X-RapidAPI-Key** с [страницы приложения RapidAPI](https://rapidapi.com/developer/security) → **`RAPIDAPI_KEY`** в `.env` и Vercel  
+
+Или найдите API в [поиске RapidAPI: youtube mp3](https://rapidapi.com/search/youtube%20mp3) и укажите host в `RAPIDAPI_HOST`.
 
 ---
 

@@ -1,14 +1,15 @@
 /**
- * Извлечение аудио из YouTube через RapidAPI + сохранение в Appwrite Storage.
+ * YouTube → аудио через RapidAPI + Appwrite Storage.
  *
- * Провайдер по умолчанию: YouTube to Mp4/Mp3 (RapidAPI, openapis)
- * — бесплатно ~100 запросов/день, стабильные CDN-ссылки.
+ * Провайдеры (по очереди, пока один не сработает):
+ *   1. YouTube to mp3 — POST /download  (marcocollatina)
+ *   2. Youtube Mp3 — GET с url          (mp37)
+ *   3. youtube-mp310 — GET /download/mp3
  *
- * Переменные окружения (Vercel + локальный .env):
- *   RAPIDAPI_KEY          — обязательно
- *   RAPIDAPI_HOST         — опционально (по умолчанию youtube-to-mp4-mp3.p.rapidapi.com)
- *   APPWRITE_API_KEY      — для загрузки в bucket media
- *   APPWRITE_PROJECT_ID   — или VITE_APPWRITE_PROJECT_ID
+ * Подписка: https://rapidapi.com/marcocollatina/api/youtube-to-mp315
+ * (или любой из списка — тот же RAPIDAPI_KEY, разные Subscribe)
+ *
+ * Env: RAPIDAPI_KEY, опционально RAPIDAPI_HOST, APPWRITE_API_KEY
  */
 
 import {
@@ -17,8 +18,26 @@ import {
   isAppwriteUploadConfigured,
 } from './appwrite-upload.mjs'
 
-const DEFAULT_RAPID_HOST = 'youtube-to-mp4-mp3.p.rapidapi.com'
-const FALLBACK_RAPID_HOST = 'youtube-to-mp315.p.rapidapi.com'
+const PROVIDERS = [
+  {
+    id: 'youtube-to-mp315',
+    host: 'youtube-to-mp315.p.rapidapi.com',
+    subscribeUrl: 'https://rapidapi.com/marcocollatina/api/youtube-to-mp315',
+    extract: extractViaMp315,
+  },
+  {
+    id: 'youtube-mp37',
+    host: 'youtube-mp37.p.rapidapi.com',
+    subscribeUrl: 'https://rapidapi.com/codyseller99payme-Tsqa1Mnw8FL/api/youtube-mp37',
+    extract: extractViaMp37,
+  },
+  {
+    id: 'youtube-mp310',
+    host: 'youtube-mp310.p.rapidapi.com',
+    subscribeUrl: 'https://rapidapi.com/eli7300/api/youtube-mp310',
+    extract: extractViaMp310,
+  },
+]
 
 export function extractYoutubeId(url) {
   try {
@@ -40,7 +59,7 @@ function rapidHeaders(host) {
   const key = getRapidApiKey()
   if (!key) {
     throw new Error(
-      'Не настроен RAPIDAPI_KEY. Получите бесплатный ключ: https://rapidapi.com/openapis/api/youtube-to-mp4-mp3'
+      `Не настроен RAPIDAPI_KEY. Подпишитесь на API: ${PROVIDERS[0].subscribeUrl}`
     )
   }
   return {
@@ -50,89 +69,43 @@ function rapidHeaders(host) {
   }
 }
 
-async function rapidFetch(path, host, query = {}) {
-  const qs = new URLSearchParams(query).toString()
-  const url = `https://${host}${path}${qs ? `?${qs}` : ''}`
-  const res = await fetch(url, {
-    headers: rapidHeaders(host),
-    signal: AbortSignal.timeout(45000),
-  })
-
-  const text = await res.text()
-  let data
-  try {
-    data = text ? JSON.parse(text) : {}
-  } catch {
-    data = { raw: text }
-  }
-
-  if (!res.ok) {
-    const msg =
-      data?.message ||
-      data?.error ||
-      data?.msg ||
-      (typeof data?.error === 'object' ? data.error?.message : null) ||
-      `RapidAPI ${res.status}`
-    throw new Error(String(msg))
-  }
-
-  return data
+function isNotSubscribedError(msg) {
+  return /not subscribed|does not exist|not found on the API/i.test(msg)
 }
 
-async function rapidPost(path, host, body) {
-  const res = await fetch(`https://${host}${path}`, {
-    method: 'POST',
-    headers: {
-      ...rapidHeaders(host),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120000),
-  })
-
-  const contentType = res.headers.get('content-type') || ''
-
-  if (contentType.includes('audio') || contentType.includes('octet-stream')) {
-    if (!res.ok) throw new Error(`RapidAPI ${res.status}`)
-    return { buffer: Buffer.from(await res.arrayBuffer()), contentType }
+function formatRapidError(data, status, subscribeUrl) {
+  const msg =
+    data?.msg ||
+    data?.message ||
+    data?.error ||
+    (typeof data?.error === 'object' ? data.error?.message : null) ||
+    `RapidAPI ${status}`
+  const s = String(msg)
+  if (isNotSubscribedError(s)) {
+    return `${s}. Подпишитесь (Basic Free): ${subscribeUrl}`
   }
-
-  const text = await res.text()
-  let data
-  try {
-    data = text ? JSON.parse(text) : {}
-  } catch {
-    data = { raw: text }
-  }
-
-  if (!res.ok) {
-    const msg = data?.message || data?.error || `RapidAPI ${res.status}`
-    throw new Error(String(msg))
-  }
-
-  return { json: data }
+  return s
 }
 
 function pickUrl(obj, depth = 0) {
-  if (!obj || depth > 4) return null
-  if (typeof obj === 'string' && obj.startsWith('http')) return obj
+  if (!obj || depth > 5) return null
+  if (typeof obj === 'string' && obj.startsWith('http')) return obj.trim()
 
   const keys = [
+    'link',
+    'file',
     'downloadUrl',
     'download_url',
     'url',
-    'link',
     'audioUrl',
-    'audio_url',
     'mp3',
-    'file',
-    'src',
+    'downloadLink',
   ]
 
   if (typeof obj === 'object' && !Array.isArray(obj)) {
     for (const k of keys) {
       const v = obj[k]
-      if (typeof v === 'string' && v.startsWith('http')) return v
+      if (typeof v === 'string' && v.startsWith('http')) return v.trim()
     }
     for (const v of Object.values(obj)) {
       const found = pickUrl(v, depth + 1)
@@ -151,46 +124,20 @@ function pickUrl(obj, depth = 0) {
 }
 
 function pickTitle(data, oembed) {
-  return (
-    data?.title ||
-    data?.videoTitle ||
-    data?.name ||
-    oembed?.title ||
-    'Без названия'
+  return (data?.title || data?.videoTitle || oembed?.title || 'Без названия').slice(
+    0,
+    200
   )
 }
 
 function pickDuration(data, oembed) {
-  const d =
-    data?.duration ||
-    data?.durationSeconds ||
-    data?.lengthSeconds ||
-    data?.length ||
-    oembed?.duration
+  const d = data?.duration || data?.durationSeconds || oembed?.duration
   const n = Number(d)
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
 }
 
-function pickThumbnail(data, oembed, videoId) {
-  return (
-    data?.thumbnail ||
-    data?.thumbnailUrl ||
-    data?.image ||
-    data?.thumb ||
-    oembed?.thumbnail_url ||
-    `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
-  )
-}
-
-function pickAuthor(data, oembed) {
-  return (
-    data?.channel ||
-    data?.channelName ||
-    data?.author ||
-    data?.uploader ||
-    oembed?.author_name ||
-    ''
-  )
+function pickThumbnail(videoId, oembed) {
+  return oembed?.thumbnail_url || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
 }
 
 async function fetchOEmbed(url) {
@@ -206,110 +153,191 @@ async function fetchOEmbed(url) {
   }
 }
 
-/** Основной провайдер: audio-info + video-info */
-async function extractViaMp4Mp3Api(youtubeUrl, videoId) {
-  const host = process.env.RAPIDAPI_HOST?.trim() || DEFAULT_RAPID_HOST
-  const oembed = await fetchOEmbed(youtubeUrl)
-
-  let videoData = {}
-  let audioData = {}
-
-  try {
-    audioData = await rapidFetch('/api/audio-info', host, { url: youtubeUrl })
-  } catch (e) {
-    const err = e instanceof Error ? e.message : String(e)
-    if (!err.includes('404')) throw e
-  }
-
-  try {
-    videoData = await rapidFetch('/api/video-info', host, { url: youtubeUrl })
-  } catch {
-    /* video-info опционален */
-  }
-
-  const merged = { ...videoData, ...audioData }
-  let audioUrl = pickUrl(audioData) || pickUrl(videoData) || pickUrl(merged)
-
-  if (!audioUrl) {
-    throw new Error('API не вернул ссылку на аудио. Попробуйте другое видео.')
-  }
-
+function baseMeta(videoId, oembed, data = {}) {
   return {
-    title: pickTitle(merged, oembed).slice(0, 200),
-    description: (merged?.description || oembed?.author_name || '').slice(0, 500),
-    coverUrl: pickThumbnail(merged, oembed, videoId),
-    audioUrl,
-    duration: pickDuration(merged, oembed),
+    title: pickTitle(data, oembed),
+    description: (data?.description || oembed?.author_name || '').slice(0, 500),
+    coverUrl: pickThumbnail(videoId, oembed),
+    duration: pickDuration(data, oembed),
     sourcePlatform: 'youtube',
-    authorName: pickAuthor(merged, oembed),
+    authorName: oembed?.author_name || data?.channel || '',
   }
 }
 
-/** Запасной провайдер: прямой MP3-стрим */
-async function extractViaMp315Api(youtubeUrl, videoId) {
-  const host = FALLBACK_RAPID_HOST
+/** POST /download { url, format: "mp3" } */
+async function extractViaMp315(youtubeUrl, videoId, host) {
   const oembed = await fetchOEmbed(youtubeUrl)
+  const subscribeUrl = PROVIDERS[0].subscribeUrl
 
-  const result = await rapidPost('/download', host, { url: youtubeUrl })
-  const { buffer, json, contentType } = result
+  const res = await fetch(`https://${host}/download`, {
+    method: 'POST',
+    headers: {
+      ...rapidHeaders(host),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ url: youtubeUrl, format: 'mp3' }),
+    signal: AbortSignal.timeout(120000),
+  })
 
-  if (buffer) {
+  const contentType = res.headers.get('content-type') || ''
+
+  if (contentType.includes('audio') || contentType.includes('octet-stream')) {
+    if (!res.ok) throw new Error(formatRapidError({}, res.status, subscribeUrl))
     if (!isAppwriteUploadConfigured()) {
-      throw new Error(
-        'Прямой MP3 от API требует APPWRITE_API_KEY для сохранения в Storage'
-      )
+      throw new Error('Нужен APPWRITE_API_KEY для сохранения MP3')
     }
+    const buffer = Buffer.from(await res.arrayBuffer())
     const uploaded = await uploadBuffer(
       buffer,
       `audio_${videoId}.mp3`,
       contentType || 'audio/mpeg'
     )
     return {
-      title: pickTitle(json || {}, oembed).slice(0, 200),
-      description: (oembed?.author_name || '').slice(0, 500),
-      coverUrl: pickThumbnail({}, oembed, videoId),
+      ...baseMeta(videoId, oembed),
       audioUrl: uploaded.viewUrl,
       audioFileId: uploaded.fileId,
-      duration: pickDuration(json || {}, oembed),
-      sourcePlatform: 'youtube',
-      authorName: pickAuthor({}, oembed),
     }
   }
 
-  const audioUrl = pickUrl(json)
-  if (!audioUrl) throw new Error('Запасной API не вернул аудио')
-
-  return {
-    title: pickTitle(json, oembed).slice(0, 200),
-    description: (json?.description || '').slice(0, 500),
-    coverUrl: pickThumbnail(json, oembed, videoId),
-    audioUrl,
-    duration: pickDuration(json, oembed),
-    sourcePlatform: 'youtube',
-    authorName: pickAuthor(json, oembed),
+  const text = await res.text()
+  let data
+  try {
+    data = text ? JSON.parse(text) : {}
+  } catch {
+    throw new Error('Некорректный ответ API')
   }
+
+  if (!res.ok) {
+    throw new Error(formatRapidError(data, res.status, subscribeUrl))
+  }
+
+  const audioUrl = pickUrl(data)
+  if (!audioUrl) {
+    throw new Error(data?.msg || data?.message || 'API не вернул ссылку на аудио')
+  }
+
+  return { ...baseMeta(videoId, oembed, data), audioUrl }
+}
+
+/** youtube-mp37 — JSON { status, file } */
+async function extractViaMp37(youtubeUrl, videoId, host) {
+  const oembed = await fetchOEmbed(youtubeUrl)
+  const subscribeUrl = PROVIDERS[1].subscribeUrl
+  const paths = [
+    `/?url=${encodeURIComponent(youtubeUrl)}`,
+    `/download?url=${encodeURIComponent(youtubeUrl)}`,
+    `/convert?url=${encodeURIComponent(youtubeUrl)}`,
+  ]
+
+  let lastErr
+  for (const path of paths) {
+    try {
+      const res = await fetch(`https://${host}${path}`, {
+        headers: rapidHeaders(host),
+        signal: AbortSignal.timeout(60000),
+      })
+      const text = await res.text()
+      let data
+      try {
+        data = text ? JSON.parse(text) : {}
+      } catch {
+        if (res.ok && text.startsWith('http')) {
+          return { ...baseMeta(videoId, oembed), audioUrl: text.trim() }
+        }
+        continue
+      }
+
+      if (!res.ok) {
+        lastErr = new Error(formatRapidError(data, res.status, subscribeUrl))
+        continue
+      }
+
+      if (data?.status === 'fail' || data?.status === 'error') {
+        lastErr = new Error(data?.message || 'Конвертация не удалась')
+        continue
+      }
+
+      const audioUrl = pickUrl(data)
+      if (audioUrl) {
+        return { ...baseMeta(videoId, oembed, data), audioUrl }
+      }
+      lastErr = new Error('Нет ссылки в ответе')
+    } catch (e) {
+      lastErr = e
+    }
+  }
+
+  throw lastErr || new Error('youtube-mp37 недоступен')
+}
+
+/** GET /download/mp3?url= */
+async function extractViaMp310(youtubeUrl, videoId, host) {
+  const oembed = await fetchOEmbed(youtubeUrl)
+  const subscribeUrl = PROVIDERS[2].subscribeUrl
+
+  const res = await fetch(
+    `https://${host}/download/mp3?url=${encodeURIComponent(youtubeUrl)}`,
+    { headers: rapidHeaders(host), signal: AbortSignal.timeout(60000) }
+  )
+
+  const contentType = res.headers.get('content-type') || ''
+
+  if (contentType.includes('audio')) {
+    if (!res.ok) throw new Error(formatRapidError({}, res.status, subscribeUrl))
+    if (!isAppwriteUploadConfigured()) {
+      throw new Error('Нужен APPWRITE_API_KEY для сохранения MP3')
+    }
+    const uploaded = await uploadBuffer(
+      Buffer.from(await res.arrayBuffer()),
+      `audio_${videoId}.mp3`,
+      'audio/mpeg'
+    )
+    return {
+      ...baseMeta(videoId, oembed),
+      audioUrl: uploaded.viewUrl,
+      audioFileId: uploaded.fileId,
+    }
+  }
+
+  const text = await res.text()
+
+  if (res.ok && text.trim().startsWith('http')) {
+    return { ...baseMeta(videoId, oembed), audioUrl: text.trim() }
+  }
+
+  let data
+  try {
+    data = text ? JSON.parse(text) : {}
+  } catch {
+    throw new Error(formatRapidError({}, res.status, subscribeUrl))
+  }
+
+  if (!res.ok) {
+    throw new Error(formatRapidError(data, res.status, subscribeUrl))
+  }
+
+  const audioUrl = pickUrl(data)
+  if (!audioUrl) throw new Error('youtube-mp310 не вернул ссылку')
+
+  return { ...baseMeta(videoId, oembed, data), audioUrl }
 }
 
 async function persistToAppwrite(extract, videoId) {
-  if (!isAppwriteUploadConfigured()) {
-    return extract
-  }
+  if (!isAppwriteUploadConfigured()) return extract
 
-  let audioUrl = extract.audioUrl
-  let audioFileId = extract.audioFileId || ''
-  let coverUrl = extract.coverUrl
-  let coverFileId = extract.coverFileId || ''
+  let { audioUrl, audioFileId = '', coverUrl, coverFileId = '' } = extract
 
   if (!audioFileId && audioUrl) {
     try {
-      const ext = audioUrl.includes('.webm') ? 'webm' : 'm4a'
-      const mime = ext === 'webm' ? 'audio/webm' : 'audio/mp4'
       const buf = await downloadToBuffer(audioUrl)
+      const isMp3 = /\.mp3|mp3/i.test(audioUrl)
+      const ext = isMp3 ? 'mp3' : 'm4a'
+      const mime = isMp3 ? 'audio/mpeg' : 'audio/mp4'
       const up = await uploadBuffer(buf, `audio_${videoId}.${ext}`, mime)
       audioUrl = up.viewUrl
       audioFileId = up.fileId
     } catch (e) {
-      console.warn('[extract] audio upload failed:', e)
+      console.warn('[extract] audio upload:', e)
     }
   }
 
@@ -320,7 +348,7 @@ async function persistToAppwrite(extract, videoId) {
       coverUrl = up.viewUrl
       coverFileId = up.fileId
     } catch (e) {
-      console.warn('[extract] cover upload failed:', e)
+      console.warn('[extract] cover upload:', e)
     }
   }
 
@@ -342,36 +370,45 @@ export async function extractFromUrl(url) {
 
   if (!getRapidApiKey()) {
     return {
-      error:
-        'Не настроен RAPIDAPI_KEY. Бесплатный ключ: rapidapi.com → YouTube to Mp4/Mp3',
+      error: `Не настроен RAPIDAPI_KEY. Подписка: ${PROVIDERS[0].subscribeUrl}`,
     }
   }
 
-  let extract
-  let lastError
+  const customHost = process.env.RAPIDAPI_HOST?.trim()
+  const providers = customHost
+    ? [
+        {
+          id: 'custom',
+          host: customHost,
+          subscribeUrl: `https://rapidapi.com/search?q=${encodeURIComponent(customHost)}`,
+          extract: (u, v, h) => extractViaMp315(u, v, h),
+        },
+      ]
+    : PROVIDERS
 
-  try {
-    extract = await extractViaMp4Mp3Api(trimmed, videoId)
-  } catch (e) {
-    lastError = e
+  const errors = []
+
+  for (const p of providers) {
     try {
-      extract = await extractViaMp315Api(trimmed, videoId)
-    } catch (e2) {
-      const msg1 = lastError instanceof Error ? lastError.message : 'Ошибка API'
-      const msg2 = e2 instanceof Error ? e2.message : 'Ошибка запасного API'
-      return { error: `${msg1}. ${msg2}` }
+      let extract = await p.extract(trimmed, videoId, p.host)
+      extract = await persistToAppwrite(extract, videoId)
+      if (!extract.audioUrl) {
+        errors.push(`${p.id}: нет audioUrl`)
+        continue
+      }
+      return extract
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      errors.push(`${p.id}: ${msg}`)
     }
   }
 
-  try {
-    extract = await persistToAppwrite(extract, videoId)
-  } catch (e) {
-    console.warn('[extract] persist:', e)
+  return {
+    error: [
+      'Не удалось получить аудио.',
+      'Подпишитесь на один из API (Basic Free):',
+      PROVIDERS.map((p) => p.subscribeUrl).join(' или '),
+      errors.join(' | '),
+    ].join(' '),
   }
-
-  if (!extract.audioUrl) {
-    return { error: 'Не удалось получить аудио' }
-  }
-
-  return extract
 }

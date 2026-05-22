@@ -6,7 +6,7 @@
 
 - React + Vite
 - Appwrite (только Database; Storage опционально — 1 bucket `media`)
-- Vercel `api/extract` — YouTube → аудио через RapidAPI + Appwrite Storage
+- Vercel `api/extract` — YouTube → RapidAPI (youtube-to-mp315) + Appwrite Storage
 
 ## Запуск
 

@@ -93,7 +93,7 @@ export function CreatePodcastModal({ open, onClose, onCreated }: CreatePodcastMo
           </p>
           <ul>
             <li>YouTube — видео, Shorts, youtu.be</li>
-            <li>Аудио сохраняется в bucket media (нужны RAPIDAPI_KEY и APPWRITE_API_KEY)</li>
+            <li>RapidAPI: youtube-to-mp315 (см. SETUP.md) + APPWRITE_API_KEY</li>
           </ul>
         </div>
 
