@@ -1,0 +1,205 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-primary);
+  z-index: 150;
+}
+
+.player {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--safe-top) + 8px) 24px calc(var(--safe-bottom) + 24px);
+  overflow-y: auto;
+}
+
+.collapse {
+  align-self: center;
+  color: var(--text-secondary);
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.artwork {
+  width: min(280px, 70vw);
+  aspect-ratio: 1;
+  margin: 0 auto 24px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), var(--shadow-gold);
+  border: 1px solid var(--border-strong);
+}
+
+.artwork img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.artPlaceholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--burgundy), var(--bg-elevated));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4rem;
+  color: var(--gold);
+}
+
+.trackInfo {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.trackInfo h1 {
+  font-size: 1.5rem;
+  color: var(--cream);
+  line-height: 1.2;
+}
+
+.trackInfo p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+.chapters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chapters button {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  border: 1px solid var(--border);
+}
+
+.chapterActive {
+  border-color: var(--gold) !important;
+  color: var(--gold) !important;
+}
+
+.progressWrap {
+  margin-bottom: 8px;
+  cursor: pointer;
+  padding: 12px 0;
+}
+
+.progressBg {
+  height: 4px;
+  background: var(--bg-elevated);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-dim), var(--gold-light));
+  border-radius: 2px;
+}
+
+.timeRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  margin: 16px 0;
+}
+
+.controls > button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text-secondary);
+  gap: 2px;
+}
+
+.skipLabel {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+.playMain {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-gold);
+  animation: pulse-gold 2s infinite;
+}
+
+.secondary {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  margin-top: 8px;
+}
+
+.secondary button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  position: relative;
+}
+
+.badge {
+  font-size: 0.6rem;
+  color: var(--gold);
+}
+
+.panel {
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+.panelTitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.speedGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.speedGrid button {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  border: 1px solid var(--border);
+}
+
+.speedActive {
+  background: rgba(201, 162, 39, 0.2) !important;
+  color: var(--gold) !important;
+  border-color: var(--gold) !important;
+}

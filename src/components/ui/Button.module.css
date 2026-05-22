@@ -1,0 +1,68 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.primary {
+  background: linear-gradient(135deg, var(--burgundy), #4a1f2e);
+  color: var(--cream);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-gold);
+}
+
+.gold {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color: var(--bg-primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-gold);
+}
+
+.secondary {
+  background: var(--bg-elevated);
+  color: var(--cream);
+  border: 1px solid var(--border);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.ghost:hover {
+  color: var(--gold);
+}
+
+.sm {
+  padding: 8px 14px;
+  font-size: 0.8rem;
+}
+
+.md {
+  padding: 12px 20px;
+  font-size: 0.9rem;
+}
+
+.lg {
+  padding: 16px 28px;
+  font-size: 1rem;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
