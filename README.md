@@ -5,8 +5,8 @@
 ## Стек
 
 - React + Vite
-- Appwrite (только Database; Storage опционально — 1 bucket `media`)
-- Vercel `api/extract` — YouTube → RapidAPI (youtube-to-mp315) + Appwrite Storage
+- Appwrite (Database + Storage bucket `media`)
+- Vercel `api/extract` — YouTube → MP3 ([Video Download API](https://video-download-api.com)) → Storage
 
 ## Запуск
 
@@ -23,5 +23,5 @@ npm run dev
 ```
 src/              — приложение
 api/extract.js    — извлечение YouTube (Vercel + dev)
-server/extract.mjs — RapidAPI + загрузка в Storage
+server/extract.mjs — конвертация + загрузка в Storage
 ```

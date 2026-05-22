@@ -102,7 +102,7 @@ export async function fetchExtract(url: string): Promise<ExtractResult> {
   return data
 }
 
-/** Сохранить подкаст в Appwrite (ссылки на аудио/обложку — без загрузки в Storage). */
+/** Сохранить подкаст в Appwrite (аудио/обложка — из Storage или внешние URL). */
 export async function createPodcastFromExtract(
   url: string,
   extract: ExtractResult,

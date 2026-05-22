@@ -63,8 +63,8 @@ export function CreatePodcastModal({ open, onClose, onCreated }: CreatePodcastMo
         >
           <Sparkles className={styles.heroIcon} size={32} />
           <p>
-            Вставьте ссылку на YouTube — аудио и обложка сохранятся в Appwrite
-            автоматически
+            Вставьте ссылку на YouTube — аудио конвертируется в MP3 и сохраняется в ваш
+            Storage
           </p>
         </motion.div>
 
@@ -84,7 +84,7 @@ export function CreatePodcastModal({ open, onClose, onCreated }: CreatePodcastMo
         </div>
 
         {loading && (
-          <p className={styles.loadingText}>Скачиваем и сохраняем аудио… обычно 15–45 сек</p>
+          <p className={styles.loadingText}>Конвертируем и загружаем… обычно 20–60 сек</p>
         )}
 
         <div className={styles.supported}>
@@ -93,7 +93,7 @@ export function CreatePodcastModal({ open, onClose, onCreated }: CreatePodcastMo
           </p>
           <ul>
             <li>YouTube — видео, Shorts, youtu.be</li>
-            <li>RapidAPI: youtube-to-mp315 (см. SETUP.md) + APPWRITE_API_KEY</li>
+            <li>MP3 и обложка сохраняются в bucket media</li>
           </ul>
         </div>
 

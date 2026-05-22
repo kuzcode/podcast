@@ -1,5 +1,6 @@
 import { extractFromUrl } from '../server/extract.mjs'
 
+/** Конвертация + загрузка в Storage может занять до ~60 с */
 export const config = {
   maxDuration: 60,
 }
@@ -18,7 +19,6 @@ export default async function handler(req, res) {
     if (result.error) return res.status(422).json(result)
     return res.status(200).json(result)
   } catch (e) {
-    console.error('[api/extract]', e)
     return res.status(500).json({
       error: e instanceof Error ? e.message : 'Ошибка извлечения',
     })
