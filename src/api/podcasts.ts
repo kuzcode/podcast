@@ -93,10 +93,32 @@ export async function getTrendingPodcasts(): Promise<Podcast[]> {
   return listPodcasts([Query.orderDesc('playCount')], 15)
 }
 
+async function readExtractResponse(res: Response): Promise<ExtractResult> {
+  const text = await res.text()
+  if (!text) {
+    throw new Error(res.ok ? 'Пустой ответ сервера' : `Ошибка сервера (${res.status})`)
+  }
+  try {
+    return JSON.parse(text) as ExtractResult
+  } catch {
+    const preview = text.replace(/\s+/g, ' ').slice(0, 120)
+    if (preview.toLowerCase().includes('an error occurred')) {
+      throw new Error(
+        'Сервер не успел обработать видео (таймаут Vercel). Добавьте VIDEO_DOWNLOAD_API_KEY и APPWRITE_API_KEY в Vercel, для длинных видео нужен Pro (60 с).'
+      )
+    }
+    throw new Error(
+      res.ok
+        ? `Сервер вернул не-JSON: ${preview}`
+        : `Ошибка ${res.status}: ${preview}`
+    )
+  }
+}
+
 /** Метаданные + ссылка на аудио через /api/extract (Vercel или Vite dev). */
 export async function fetchExtract(url: string): Promise<ExtractResult> {
   const res = await fetch(`/api/extract?url=${encodeURIComponent(url)}`)
-  const data = (await res.json()) as ExtractResult
+  const data = await readExtractResponse(res)
   if (!res.ok) throw new Error(data.error || 'Ошибка извлечения')
   if (data.error) throw new Error(data.error)
   return data

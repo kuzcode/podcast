@@ -5,8 +5,8 @@
  */
 
 const DEFAULT_HOST = 'https://p.savenow.to'
-const POLL_INTERVAL_MS = 2000
-const MAX_POLL_ATTEMPTS = 45
+const POLL_INTERVAL_MS = 1500
+const MAX_POLL_ATTEMPTS = 30
 
 function apiHost() {
   return (process.env.VIDEO_DOWNLOAD_API_HOST || DEFAULT_HOST).replace(/\/$/, '')
@@ -36,7 +36,8 @@ async function apiFetch(path, { timeout = 30000 } = {}) {
   try {
     data = JSON.parse(text)
   } catch {
-    throw new Error('Сервис конвертации вернул некорректный ответ')
+    const preview = text.replace(/\s+/g, ' ').slice(0, 80)
+    throw new Error(`Сервис конвертации: не JSON (${preview})`)
   }
   return { res, data }
 }
@@ -60,9 +61,21 @@ export async function convertYoutubeToMp3(youtubeUrl) {
   }
 
   const meta = job.additional_info || {}
+  const idFromUrl = (() => {
+    try {
+      const u = new URL(youtubeUrl)
+      if (u.hostname.includes('youtu.be')) return u.pathname.slice(1).split('/')[0]
+      return u.searchParams.get('v') || u.pathname.match(/\/(?:shorts|v)\/([^/?]+)/)?.[1]
+    } catch {
+      return null
+    }
+  })()
+  const vid = meta.id || idFromUrl || ''
   const title = (job.title || meta.title || 'Без названия').slice(0, 200)
   const coverUrl =
-    meta.thumbnail || job.info?.image || `https://i.ytimg.com/vi/${meta.id}/hqdefault.jpg`
+    meta.thumbnail ||
+    job.info?.image ||
+    (vid ? `https://i.ytimg.com/vi/${vid}/hqdefault.jpg` : '')
   const duration = Math.floor(meta.duration || 0)
 
   const jobId = job.id
