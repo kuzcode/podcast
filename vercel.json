@@ -1,10 +1,9 @@
 {
   "functions": {
-    "api/extract.js": { "maxDuration": 60, "memory": 1024 },
-    "api/audio-proxy.js": { "maxDuration": 60, "memory": 1024 }
+    "api/extract.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
   },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

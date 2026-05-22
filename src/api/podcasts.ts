@@ -13,7 +13,9 @@ export interface ExtractResult {
   title: string
   description?: string
   coverUrl: string
+  coverFileId?: string
   audioUrl: string
+  audioFileId?: string
   duration: number
   sourcePlatform: string
   authorName: string
@@ -91,43 +93,12 @@ export async function getTrendingPodcasts(): Promise<Podcast[]> {
   return listPodcasts([Query.orderDesc('playCount')], 15)
 }
 
-function getApiOrigin(): string {
-  if (typeof window !== 'undefined' && window.location.origin) {
-    return window.location.origin.replace(/\/$/, '')
-  }
-  const app = import.meta.env.VITE_APP_URL?.replace(/\/$/, '')
-  return app || ''
-}
-
 /** Метаданные + ссылка на аудио через /api/extract (Vercel или Vite dev). */
 export async function fetchExtract(url: string): Promise<ExtractResult> {
-  const api = `${getApiOrigin()}/api/extract?url=${encodeURIComponent(url)}`
-
-  let res: Response
-  try {
-    res = await fetch(api, { signal: AbortSignal.timeout(90000) })
-  } catch {
-    throw new Error(
-      'Сервер извлечения недоступен (fetch failed). Передеплойте Vercel и проверьте vercel.json.'
-    )
-  }
-
-  const text = await res.text()
-  let data: ExtractResult
-  try {
-    data = JSON.parse(text) as ExtractResult
-  } catch {
-    throw new Error(
-      'API вернул не JSON (возможно, /api/extract не работает). Проверьте деплой на Vercel.'
-    )
-  }
-
-  if (!res.ok || data.error) {
-    throw new Error(data.error || 'Ошибка извлечения')
-  }
-  if (!data.audioUrl) {
-    throw new Error('Аудио не найдено для этого видео')
-  }
+  const res = await fetch(`/api/extract?url=${encodeURIComponent(url)}`)
+  const data = (await res.json()) as ExtractResult
+  if (!res.ok) throw new Error(data.error || 'Ошибка извлечения')
+  if (data.error) throw new Error(data.error)
   return data
 }
 
@@ -138,12 +109,12 @@ export async function createPodcastFromExtract(
   userId: string
 ): Promise<Podcast> {
   const doc = await databases.createDocument(DB_ID, COL.podcasts, ID.unique(), {
-    title: extract.title || 'Подкаст',
+    title: extract.title,
     description: extract.description || `Из ${extract.sourcePlatform}`,
-    coverUrl: extract.coverUrl || '',
-    coverFileId: '',
+    coverUrl: extract.coverUrl,
+    coverFileId: extract.coverFileId || '',
     audioUrl: extract.audioUrl,
-    audioFileId: '',
+    audioFileId: extract.audioFileId || '',
     sourceUrl: url,
     sourcePlatform: extract.sourcePlatform,
     duration: extract.duration,

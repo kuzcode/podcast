@@ -62,11 +62,23 @@
 ### Storage — **один bucket** `media`
 
 - Max size: 100 MB  
-- Extensions: mp3, m4a, jpg, png, webp  
+- Extensions: mp3, m4a, webm, jpg, png, webp  
 - Read: **Any**  
-- Create: **Any** (или отключите, если не загружаете файлы вручную)
+- Create: **Any** (для загрузки аудио с сервера) или API key с scope `files.write`
 
-Подкасты из YouTube **не используют bucket** — в БД сохраняются прямые ссылки на аудио и обложку.
+Подкасты из YouTube **сохраняют файлы в bucket `media`** (аудио + обложка), в БД — `audioUrl`, `audioFileId`, `coverUrl`, `coverFileId`.
+
+### API key для сервера (обязательно для YouTube)
+
+1. Appwrite Console → **API Keys** → Create API Key  
+2. Scopes: `files.write` (и при необходимости `buckets.read`)  
+3. Скопируйте в `.env` и Vercel как **`APPWRITE_API_KEY`** (не `VITE_`!)
+
+### RapidAPI (обязательно для YouTube)
+
+1. [YouTube to Mp4/Mp3](https://rapidapi.com/openapis/api/youtube-to-mp4-mp3) → Subscribe → **Basic (Free)**  
+2. Скопируйте **X-RapidAPI-Key** → **`RAPIDAPI_KEY`** в `.env` и Vercel  
+3. Бесплатно ~100 запросов/день — достаточно для личного Mini App
 
 ---
 
@@ -76,7 +88,7 @@
 cp .env.example .env
 ```
 
-Заполните `VITE_APPWRITE_*`. Удалите старые переменные `VITE_APPWRITE_AUDIO_BUCKET`, `VITE_APPWRITE_FN_*`, если остались.
+Заполните `VITE_APPWRITE_*` и серверные ключи (`RAPIDAPI_KEY`, `APPWRITE_API_KEY`). Удалите старые переменные `VITE_APPWRITE_AUDIO_BUCKET`, `VITE_APPWRITE_FN_*`, если остались.
 
 ```bash
 npm install
@@ -88,7 +100,7 @@ npm run dev
 ## 4. Деплой на Vercel (бесплатно 24/7)
 
 1. Репозиторий на GitHub → Import в Vercel.
-2. Environment Variables — все `VITE_*` из `.env`.
+2. Environment Variables — все `VITE_*` + `RAPIDAPI_KEY` + `APPWRITE_API_KEY` из `.env`.
 3. **`VITE_DEV_MOCK_TELEGRAM=false`** на production (обязательно).
 4. Deploy.
 5. URL в BotFather → Mini App.
@@ -104,10 +116,8 @@ npm run dev
 
 Без этого браузер в Telegram блокирует запросы к Appwrite.
 
-**Извлечение аудио:** `api/extract.js` — **@distube/ytdl-core** (напрямую с YouTube, работает на Vercel).  
-Запас: Piped/Invidious. Воспроизведение — `api/audio-proxy` (обход CORS).  
-
-В `vercel.json` маршруты `/api/*` **не** должны уходить в `index.html` (уже настроено).
+**Извлечение аудио:** на Vercel работает `api/extract.js` (RapidAPI → скачивание → Appwrite Storage).  
+Локально — тот же маршрут через Vite dev server (читает `.env`).
 
 ---
 
@@ -121,11 +131,12 @@ Telegram Mini App открывается
 
 Создать подкаст:
     → GET /api/extract?url=...
-    → Piped API → audioUrl + обложка
-    → createDocument podcasts (ссылки в БД)
+    → RapidAPI (метаданные + ссылка на аудио)
+    → сервер скачивает файлы → bucket media
+    → createDocument podcasts (URL + fileId в БД)
 ```
 
-**Ограничение:** пока только **YouTube**. Ссылки на аудио могут перестать работать через время (ограничение Piped/YouTube) — для стабильности позже можно добавить загрузку в bucket `media`.
+**Ограничение:** пока только **YouTube**. Лимит RapidAPI на бесплатном плане — ~100 импортов/день.
 
 ---
 
@@ -142,7 +153,8 @@ Free-план замирает после 7 дней без запросов.
 |--------|---------|
 | Нет входа | Открыть из Telegram, не из браузера |
 | Permission denied | В коллекциях включить Any на create/read/update |
-| extract failed | Только YouTube; попробуйте другое видео |
+| extract failed / RAPIDAPI_KEY | Подключите RapidAPI; только YouTube |
+| APPWRITE_API_KEY | Нужен API key с `files.write` для сохранения в Storage |
 | CORS / api 404 на dev | `npm run dev` — API встроен в Vite |
 
 ---
