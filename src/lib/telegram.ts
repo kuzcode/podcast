@@ -15,12 +15,13 @@ export function initTelegramApp(): void {
   tg.setBackgroundColor('#0f0e0c')
 }
 
-export function getInitData(): string {
+/** Пользователь из Telegram (для авторизации без серверных Functions). */
+export function getTelegramUser() {
   const tg = getTelegramWebApp()
-  if (tg?.initData) return tg.initData
+  if (tg?.initDataUnsafe?.user) return tg.initDataUnsafe.user
 
   if (import.meta.env.DEV && import.meta.env.VITE_DEV_MOCK_TELEGRAM === 'true') {
-    const mockUser = {
+    return {
       id: 123456789,
       first_name: 'Dev',
       last_name: 'User',
@@ -29,20 +30,9 @@ export function getInitData(): string {
       photo_url: '',
       is_premium: false,
     }
-    const authDate = Math.floor(Date.now() / 1000)
-    const params = new URLSearchParams({
-      user: JSON.stringify(mockUser),
-      auth_date: String(authDate),
-      hash: 'dev_mock_hash_not_for_production',
-    })
-    return params.toString()
   }
 
-  return ''
-}
-
-export function getTelegramUserUnsafe() {
-  return getTelegramWebApp()?.initDataUnsafe?.user ?? null
+  return null
 }
 
 export function haptic(

@@ -57,23 +57,10 @@
   border-color: var(--gold);
 }
 
-.progressWrap p {
-  font-size: 0.8rem;
+.loadingText {
+  font-size: 0.85rem;
   color: var(--text-secondary);
   text-align: center;
-  margin-top: 8px;
-}
-
-.progressBar {
-  height: 4px;
-  background: var(--bg-elevated);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progressFill {
-  height: 100%;
-  background: var(--gold);
 }
 
 .supported {

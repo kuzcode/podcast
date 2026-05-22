@@ -9,10 +9,7 @@ interface ImportMetaEnv {
   readonly VITE_APPWRITE_FAVORITES_COLLECTION: string
   readonly VITE_APPWRITE_HISTORY_COLLECTION: string
   readonly VITE_APPWRITE_PROGRESS_COLLECTION: string
-  readonly VITE_APPWRITE_AUDIO_BUCKET: string
-  readonly VITE_APPWRITE_COVERS_BUCKET: string
-  readonly VITE_APPWRITE_FN_AUTH: string
-  readonly VITE_APPWRITE_FN_EXTRACT: string
+  readonly VITE_APPWRITE_MEDIA_BUCKET: string
   readonly VITE_APP_URL: string
   readonly VITE_DEV_MOCK_TELEGRAM: string
 }

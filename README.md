@@ -1,36 +1,27 @@
 # Atelier — подкасты в Telegram
 
-Мини-приложение Telegram для прослушивания подкастов. Создавайте подкасты из видео YouTube и других платформ, слушайте с удобным плеером и персональными рекомендациями.
+Простой Mini App: авторизация через Telegram → Appwrite, подкасты из YouTube без Functions и без второго bucket.
 
-## Быстрый старт (разработка)
+## Стек
+
+- React + Vite
+- Appwrite (только Database; Storage опционально — 1 bucket `media`)
+- Vercel `api/extract` — YouTube → аудио через Piped API
+
+## Запуск
 
 ```bash
 npm install
 cp .env.example .env
-# Заполните VITE_APPWRITE_PROJECT_ID или оставьте mock-режим
 npm run dev
 ```
 
-## Полная настройка (production)
-
-См. **[SETUP.md](./SETUP.md)** — пошаговая инструкция:
-
-- Telegram Bot + Mini App
-- Appwrite (БД, Storage, Functions)
-- Деплой на Vercel (бесплатно 24/7)
-- Мониторинг чтобы проект не «засыпал»
-
-## Стек
-
-- React 19 + TypeScript + Vite
-- Appwrite (БД, файлы, serverless)
-- Telegram Web App SDK
-- Framer Motion, Howler.js, Zustand
+Полная настройка: **[SETUP.md](./SETUP.md)**
 
 ## Структура
 
 ```
-src/           — React-приложение
-appwrite/      — Cloud Functions (auth, extract-audio)
-SETUP.md       — инструкция по развёртыванию
+src/              — приложение
+api/extract.js    — извлечение YouTube (Vercel + dev)
+server/extract.mjs — логика Piped
 ```

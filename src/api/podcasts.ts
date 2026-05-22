@@ -1,24 +1,32 @@
 import {
   databases,
-  functions,
   DB_ID,
   COL,
-  BUCKETS,
-  FN,
   Query,
+  ID,
   getFileView,
   isAppwriteConfigured,
 } from '@/lib/appwrite'
-import { getStoredSession } from '@/api/auth'
-import type { Podcast, ExtractJobResponse } from '@/types'
+import type { Podcast } from '@/types'
+
+export interface ExtractResult {
+  title: string
+  description?: string
+  coverUrl: string
+  audioUrl: string
+  duration: number
+  sourcePlatform: string
+  authorName: string
+  error?: string
+}
 
 function parsePodcast(doc: Record<string, unknown>): Podcast {
   const p = doc as unknown as Podcast
   if (p.audioFileId && !p.audioUrl) {
-    p.audioUrl = getFileView(BUCKETS.audio, p.audioFileId)
+    p.audioUrl = getFileView(p.audioFileId)
   }
   if (p.coverFileId && !p.coverUrl) {
-    p.coverUrl = getFileView(BUCKETS.covers, p.coverFileId)
+    p.coverUrl = getFileView(p.coverFileId)
   }
   if (typeof p.tags === 'string') {
     try {
@@ -28,13 +36,6 @@ function parsePodcast(doc: Record<string, unknown>): Podcast {
     }
   }
   if (!Array.isArray(p.tags)) p.tags = []
-  if (typeof p.chapters === 'string') {
-    try {
-      p.chapters = JSON.parse(p.chapters as unknown as string)
-    } catch {
-      p.chapters = []
-    }
-  }
   return p
 }
 
@@ -90,18 +91,49 @@ export async function getTrendingPodcasts(): Promise<Podcast[]> {
   return listPodcasts([Query.orderDesc('playCount')], 15)
 }
 
-export async function extractFromUrl(url: string): Promise<ExtractJobResponse> {
-  const session = getStoredSession()
-  const execution = await functions.createExecution(
-    FN.extract,
-    JSON.stringify({ url, sessionToken: session })
-  )
+/** Метаданные + ссылка на аудио через /api/extract (Vercel или Vite dev). */
+export async function fetchExtract(url: string): Promise<ExtractResult> {
+  const res = await fetch(`/api/extract?url=${encodeURIComponent(url)}`)
+  const data = (await res.json()) as ExtractResult
+  if (!res.ok) throw new Error(data.error || 'Ошибка извлечения')
+  if (data.error) throw new Error(data.error)
+  return data
+}
 
-  if (execution.status === 'failed') {
-    throw new Error(execution.errors || 'Ошибка извлечения аудио')
-  }
+/** Сохранить подкаст в Appwrite (ссылки на аудио/обложку — без загрузки в Storage). */
+export async function createPodcastFromExtract(
+  url: string,
+  extract: ExtractResult,
+  userId: string
+): Promise<Podcast> {
+  const doc = await databases.createDocument(DB_ID, COL.podcasts, ID.unique(), {
+    title: extract.title,
+    description: extract.description || `Из ${extract.sourcePlatform}`,
+    coverUrl: extract.coverUrl,
+    coverFileId: '',
+    audioUrl: extract.audioUrl,
+    audioFileId: '',
+    sourceUrl: url,
+    sourcePlatform: extract.sourcePlatform,
+    duration: extract.duration,
+    tags: JSON.stringify([extract.sourcePlatform, 'imported']),
+    userId,
+    authorName: extract.authorName,
+    isPublic: true,
+    playCount: 0,
+    likeCount: 0,
+    chapters: '[]',
+    createdAt: new Date().toISOString(),
+  })
+  return parsePodcast(doc as unknown as Record<string, unknown>)
+}
 
-  return JSON.parse(execution.responseBody) as ExtractJobResponse
+export async function createPodcastFromUrl(
+  url: string,
+  userId: string
+): Promise<Podcast> {
+  const extract = await fetchExtract(url)
+  return createPodcastFromExtract(url, extract, userId)
 }
 
 export async function incrementPlayCount(podcastId: string): Promise<void> {

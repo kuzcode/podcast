@@ -1,14 +1,12 @@
-import { Client, Account, Databases, Storage, Functions, Query } from 'appwrite'
+import { Client, Databases, Storage, Query, ID } from 'appwrite'
 
 const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1'
 const projectId = import.meta.env.VITE_APPWRITE_PROJECT_ID || ''
 
 export const client = new Client().setEndpoint(endpoint).setProject(projectId)
 
-export const account = new Account(client)
 export const databases = new Databases(client)
 export const storage = new Storage(client)
-export const functions = new Functions(client)
 
 export const DB_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID || 'podcast_db'
 export const COL = {
@@ -18,23 +16,14 @@ export const COL = {
   history: import.meta.env.VITE_APPWRITE_HISTORY_COLLECTION || 'history',
   progress: import.meta.env.VITE_APPWRITE_PROGRESS_COLLECTION || 'progress',
 }
-export const BUCKETS = {
-  audio: import.meta.env.VITE_APPWRITE_AUDIO_BUCKET || 'audio',
-  covers: import.meta.env.VITE_APPWRITE_COVERS_BUCKET || 'covers',
-}
-export const FN = {
-  auth: import.meta.env.VITE_APPWRITE_FN_AUTH || 'telegram-auth',
-  extract: import.meta.env.VITE_APPWRITE_FN_EXTRACT || 'extract-audio',
-}
 
-export { Query }
+/** Один bucket для всего: audio_*, cover_* в имени файла при загрузке */
+export const MEDIA_BUCKET = import.meta.env.VITE_APPWRITE_MEDIA_BUCKET || 'media'
 
-export function getFileView(bucketId: string, fileId: string): string {
-  return `${endpoint}/storage/buckets/${bucketId}/files/${fileId}/view?project=${projectId}`
-}
+export { Query, ID }
 
-export function getFileDownload(bucketId: string, fileId: string): string {
-  return `${endpoint}/storage/buckets/${bucketId}/files/${fileId}/download?project=${projectId}`
+export function getFileView(fileId: string): string {
+  return `${endpoint}/storage/buckets/${MEDIA_BUCKET}/files/${fileId}/view?project=${projectId}`
 }
 
 export function isAppwriteConfigured(): boolean {

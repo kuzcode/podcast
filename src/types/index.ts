@@ -81,17 +81,4 @@ export interface HistoryEntry {
   duration: number
 }
 
-export interface AuthResponse {
-  user: User
-  sessionToken: string
-}
-
-export interface ExtractJobResponse {
-  jobId: string
-  status: 'queued' | 'processing' | 'done' | 'error'
-  podcast?: Podcast
-  error?: string
-  progress?: number
-}
-
 export type SortOption = 'recent' | 'popular' | 'duration' | 'title'

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { authenticateWithTelegram, getStoredSession } from '@/api/auth'
-import { getInitData } from '@/lib/telegram'
+import { loginWithTelegram } from '@/api/auth'
+import { getTelegramUser } from '@/lib/telegram'
 import { isAppwriteConfigured } from '@/lib/appwrite'
 import { DEFAULT_SETTINGS } from '@/lib/constants'
 import type { User } from '@/types'
@@ -16,7 +16,7 @@ interface AuthState {
 }
 
 const DEMO_USER: User = {
-  $id: 'demo-user',
+  $id: '123456789',
   telegramId: '123456789',
   firstName: 'Dev',
   lastName: 'User',
@@ -35,18 +35,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null })
 
     try {
-      const initData = getInitData()
-
       if (!isAppwriteConfigured()) {
-        set({
-          user: DEMO_USER,
-          isAuthenticated: true,
-          isLoading: false,
-        })
+        set({ user: DEMO_USER, isAuthenticated: true, isLoading: false })
         return
       }
 
-      if (!initData) {
+      if (!getTelegramUser()) {
         set({
           error: 'Откройте приложение через Telegram',
           isLoading: false,
@@ -54,19 +48,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return
       }
 
-      const session = getStoredSession()
-      if (session) {
-        try {
-          const { user } = await authenticateWithTelegram(initData)
-          localStorage.setItem('atelier_user_id', user.$id)
-          set({ user, isAuthenticated: true, isLoading: false })
-          return
-        } catch {
-          /* re-auth */
-        }
-      }
-
-      const { user } = await authenticateWithTelegram(initData)
+      const user = await loginWithTelegram()
       localStorage.setItem('atelier_user_id', user.$id)
       set({ user, isAuthenticated: true, isLoading: false })
     } catch (e) {
@@ -91,7 +73,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    localStorage.removeItem('atelier_session')
+    localStorage.removeItem('atelier_user_id')
     set({ user: null, isAuthenticated: false })
   },
 }))
