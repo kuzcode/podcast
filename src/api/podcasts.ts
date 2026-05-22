@@ -92,11 +92,11 @@ export async function getTrendingPodcasts(): Promise<Podcast[]> {
 }
 
 function getApiOrigin(): string {
-  if (import.meta.env.DEV) return ''
+  if (typeof window !== 'undefined' && window.location.origin) {
+    return window.location.origin.replace(/\/$/, '')
+  }
   const app = import.meta.env.VITE_APP_URL?.replace(/\/$/, '')
-  if (app) return app
-  if (typeof window !== 'undefined') return window.location.origin
-  return ''
+  return app || ''
 }
 
 /** Метаданные + ссылка на аудио через /api/extract (Vercel или Vite dev). */

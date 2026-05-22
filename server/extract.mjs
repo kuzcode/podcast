@@ -1,19 +1,17 @@
-/** YouTube → аудио. Приоритет: звук. Обложка — запасной URL с i.ytimg.com */
+/** YouTube → аудио. Сначала ytdl (надёжно с Vercel), затем Piped/Invidious. */
+
+import { extractViaYtdl } from './extract-ytdl.mjs'
 
 const PIPED = [
-  'https://pipedapi.kavin.rocks',
-  'https://pipedapi.adminforge.de',
   'https://pipedapi.syncpundit.io',
+  'https://pipedapi.adminforge.de',
   'https://pipedapi.r4fo.com',
-  'https://api.piped.privacydev.net',
 ]
 
 const INVIDIOUS = [
-  'https://invidious.fdn.fr',
-  'https://inv.nadeko.net',
+  'https://yewtu.be',
   'https://vid.puffyan.us',
-  'https://invidious.jing.rocks',
-  'https://yt.artemislena.eu',
+  'https://invidious.fdn.fr',
 ]
 
 export function extractYoutubeId(url) {
@@ -32,10 +30,11 @@ export function youtubeThumbnail(videoId) {
   return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
 }
 
-async function fetchJson(url, timeoutMs = 25000) {
+async function fetchJson(url, timeoutMs = 20000) {
   const res = await fetch(url, {
     headers: {
-      'User-Agent': 'Atelier/1.0 (Telegram Mini App)',
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       Accept: 'application/json',
     },
     signal: AbortSignal.timeout(timeoutMs),
@@ -109,7 +108,6 @@ async function extractViaInvidious(videoId) {
   throw lastErr || new Error('Invidious недоступен')
 }
 
-/** oEmbed — только название (если аудио уже есть) */
 async function fetchOEmbed(videoId) {
   try {
     const watch = `https://www.youtube.com/watch?v=${videoId}`
@@ -123,11 +121,28 @@ async function fetchOEmbed(videoId) {
   }
 }
 
-/** Прямая ссылка → наш прокси (обход CORS в плеере) */
 export function wrapAudioProxy(directUrl, publicOrigin = '') {
   const b = Buffer.from(directUrl, 'utf8').toString('base64url')
   const origin = (publicOrigin || '').replace(/\/$/, '')
   return `${origin}/api/audio-proxy?u=${b}`
+}
+
+function formatError(e) {
+  if (e instanceof Error) return e.message
+  return String(e)
+}
+
+function finalizeExtract(raw, videoId, publicOrigin) {
+  const fallbackCover = youtubeThumbnail(videoId)
+  return {
+    title: (raw.title || 'Подкаст с YouTube').slice(0, 200),
+    description: (raw.description || '').slice(0, 500),
+    coverUrl: raw.coverUrl || fallbackCover,
+    audioUrl: wrapAudioProxy(raw.audioUrl, publicOrigin),
+    duration: Math.floor(Number(raw.duration) || 0),
+    sourcePlatform: 'youtube',
+    authorName: raw.authorName || '',
+  }
 }
 
 export async function extractFromUrl(url, publicOrigin = '') {
@@ -141,39 +156,41 @@ export async function extractFromUrl(url, publicOrigin = '') {
     return { error: 'Поддерживается только YouTube (видео, Shorts, youtu.be)' }
   }
 
-  const fallbackCover = youtubeThumbnail(videoId)
+  const watchUrl = trimmed.includes('youtube') || trimmed.includes('youtu.be')
+    ? trimmed
+    : `https://www.youtube.com/watch?v=${videoId}`
+
   const errors = []
 
+  // 1) Основной способ — работает с Vercel
+  try {
+    const raw = await extractViaYtdl(videoId, watchUrl)
+    if (raw.audioUrl) return finalizeExtract(raw, videoId, publicOrigin)
+  } catch (e) {
+    errors.push(`ytdl: ${formatError(e)}`)
+  }
+
+  // 2) Запасные
   for (const fn of [extractViaPiped, extractViaInvidious]) {
     try {
       const raw = await fn(videoId)
       if (!raw.audioUrl) continue
 
-      let title = raw.title
-      let authorName = raw.authorName
-      if (!title) {
+      if (!raw.title) {
         const meta = await fetchOEmbed(videoId)
-        title = meta.title
-        authorName = authorName || meta.authorName
+        raw.title = meta.title
+        raw.authorName = raw.authorName || meta.authorName
       }
 
-      return {
-        title: (title || 'Подкаст с YouTube').slice(0, 200),
-        description: (raw.description || '').slice(0, 500),
-        coverUrl: raw.coverUrl || fallbackCover,
-        audioUrl: wrapAudioProxy(raw.audioUrl, publicOrigin),
-        duration: Math.floor(Number(raw.duration) || 0),
-        sourcePlatform: 'youtube',
-        authorName: authorName || '',
-      }
+      return finalizeExtract(raw, videoId, publicOrigin)
     } catch (e) {
-      errors.push(e instanceof Error ? e.message : String(e))
+      errors.push(formatError(e))
     }
   }
 
   return {
     error:
-      'Не удалось получить аудио. Попробуйте другое видео или позже.\n' +
-      errors.slice(0, 2).join(' · '),
+      'Не удалось получить аудио. Попробуйте другое видео (короче 30 мин).\n' +
+      errors.slice(0, 3).join(' | '),
   }
 }

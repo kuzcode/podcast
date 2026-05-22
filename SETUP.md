@@ -104,8 +104,8 @@ npm run dev
 
 Без этого браузер в Telegram блокирует запросы к Appwrite.
 
-**Извлечение аудио:** `api/extract.js` (Piped + Invidious, запасная обложка i.ytimg.com).  
-Воспроизведение — через `api/audio-proxy` (обход CORS).  
+**Извлечение аудио:** `api/extract.js` — **@distube/ytdl-core** (напрямую с YouTube, работает на Vercel).  
+Запас: Piped/Invidious. Воспроизведение — `api/audio-proxy` (обход CORS).  
 
 В `vercel.json` маршруты `/api/*` **не** должны уходить в `index.html` (уже настроено).
 

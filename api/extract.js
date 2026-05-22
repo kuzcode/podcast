@@ -1,5 +1,9 @@
 import { extractFromUrl } from '../server/extract.mjs'
 
+export const config = {
+  maxDuration: 60,
+}
+
 function getPublicOrigin(req) {
   if (process.env.VITE_APP_URL) {
     return process.env.VITE_APP_URL.replace(/\/$/, '')
@@ -28,6 +32,7 @@ export default async function handler(req, res) {
     return res.status(200).json(result)
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Ошибка извлечения'
+    console.error('[extract]', msg, e)
     return res.status(500).json({ error: msg })
   }
 }
