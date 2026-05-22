@@ -7,10 +7,13 @@
 
 .player {
   height: 100%;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   padding: calc(var(--safe-top) + 8px) 24px calc(var(--safe-bottom) + 24px);
   overflow-y: auto;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .collapse {
@@ -62,6 +65,12 @@
   font-size: 0.9rem;
   color: var(--text-secondary);
   margin-top: 6px;
+}
+
+.loadingLabel {
+  font-size: 0.8rem;
+  color: var(--gold) !important;
+  margin-top: 8px !important;
 }
 
 .chapters {

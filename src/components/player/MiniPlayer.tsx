@@ -7,6 +7,7 @@ import styles from './MiniPlayer.module.css'
 export function MiniPlayer() {
   const current = usePlayerStore((s) => s.current)
   const isPlaying = usePlayerStore((s) => s.isPlaying)
+  const isLoading = usePlayerStore((s) => s.isLoading)
   const currentTime = usePlayerStore((s) => s.currentTime)
   const duration = usePlayerStore((s) => s.duration)
   const toggle = usePlayerStore((s) => s.toggle)
@@ -40,7 +41,9 @@ export function MiniPlayer() {
             <div className={styles.info}>
               <p className={styles.title}>{current.title}</p>
               <p className={styles.time}>
-                {formatDuration(currentTime)} / {formatDuration(duration || current.duration)}
+                {isLoading
+                  ? 'Загрузка…'
+                  : `${formatDuration(currentTime)} / ${formatDuration(duration || current.duration)}`}
               </p>
             </div>
             <button

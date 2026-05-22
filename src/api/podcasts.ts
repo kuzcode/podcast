@@ -38,6 +38,15 @@ function parsePodcast(doc: Record<string, unknown>): Podcast {
     }
   }
   if (!Array.isArray(p.tags)) p.tags = []
+  if (typeof p.chapters === 'string') {
+    try {
+      const parsed = JSON.parse(p.chapters as unknown as string)
+      p.chapters = Array.isArray(parsed) ? parsed : []
+    } catch {
+      p.chapters = []
+    }
+  }
+  if (!Array.isArray(p.chapters)) p.chapters = []
   return p
 }
 

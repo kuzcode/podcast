@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, TrendingUp, PlayCircle } from 'lucide-react'
 import { PodcastCard } from '@/components/podcast/PodcastCard'
 import { CreatePodcastModal } from '@/components/create/CreatePodcastModal'
+import { CreatingPodcastBanner } from '@/components/create/CreatingPodcastBanner'
 import { useAuthStore } from '@/store/authStore'
 import { getRecommendations, getContinueListening } from '@/api/recommendations'
 import { getTrendingPodcasts, getDemoPodcasts } from '@/api/podcasts'
@@ -20,38 +21,38 @@ export function HomePage() {
   const [trending, setTrending] = useState<Podcast[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const loadFeed = useCallback(async () => {
     if (!user) return
-    localStorage.setItem('atelier_user_id', user.$id)
-
-    async function load() {
-      if (!user) return
-      setLoading(true)
-      try {
-        if (isAppwriteConfigured()) {
-          const [cont, rec, trend] = await Promise.all([
-            getContinueListening(user.$id),
-            getRecommendations(user.$id),
-            getTrendingPodcasts(),
-          ])
-          setContinueList(cont)
-          setRecommended(rec)
-          setTrending(trend)
-        } else {
-          const demo = getDemoPodcasts()
-          setRecommended(demo)
-          setTrending(demo)
-        }
-      } catch {
+    setLoading(true)
+    try {
+      if (isAppwriteConfigured()) {
+        const [cont, rec, trend] = await Promise.all([
+          getContinueListening(user.$id),
+          getRecommendations(user.$id),
+          getTrendingPodcasts(),
+        ])
+        setContinueList(cont)
+        setRecommended(rec)
+        setTrending(trend)
+      } else {
         const demo = getDemoPodcasts()
         setRecommended(demo)
         setTrending(demo)
-      } finally {
-        setLoading(false)
       }
+    } catch {
+      const demo = getDemoPodcasts()
+      setRecommended(demo)
+      setTrending(demo)
+    } finally {
+      setLoading(false)
     }
-    load()
   }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    localStorage.setItem('atelier_user_id', user.$id)
+    loadFeed()
+  }, [user, loadFeed])
 
   return (
     <div className="page">
@@ -75,6 +76,8 @@ export function HomePage() {
           <span>Создать</span>
         </motion.button>
       </motion.header>
+
+      <CreatingPodcastBanner />
 
       {continueList.length > 0 && (
         <section className={styles.section}>
@@ -123,7 +126,11 @@ export function HomePage() {
         </div>
       </section>
 
-      <CreatePodcastModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreatePodcastModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={() => loadFeed()}
+      />
     </div>
   )
 }

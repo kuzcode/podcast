@@ -3,9 +3,9 @@ import { motion } from 'framer-motion'
 import { Link2, Video, Sparkles, AlertCircle } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { createPodcastFromUrl } from '@/api/podcasts'
 import { detectPlatform } from '@/lib/format'
 import { useAuthStore } from '@/store/authStore'
+import { useImportStore } from '@/store/importStore'
 import { haptic } from '@/lib/telegram'
 import { useToastStore } from '@/store/toastStore'
 import styles from './CreatePodcastModal.module.css'
@@ -18,8 +18,9 @@ interface CreatePodcastModalProps {
 
 export function CreatePodcastModal({ open, onClose, onCreated }: CreatePodcastModalProps) {
   const user = useAuthStore((s) => s.user)
+  const startImport = useImportStore((s) => s.start)
+  const importing = useImportStore((s) => s.active)
   const [url, setUrl] = useState('')
-  const [loading, setLoading] = useState(false)
   const showToast = useToastStore((s) => s.show)
 
   const platform = url ? detectPlatform(url) : null
@@ -33,23 +34,22 @@ export function CreatePodcastModal({ open, onClose, onCreated }: CreatePodcastMo
       showToast('Войдите через Telegram', 'error')
       return
     }
+    if (importing) return
 
-    setLoading(true)
+    const trimmed = url.trim()
     haptic('medium')
+    onClose()
+    setUrl('')
 
     try {
-      const podcast = await createPodcastFromUrl(url.trim(), user.$id)
+      const podcastId = await startImport(trimmed, user.$id)
       showToast('Подкаст создан!', 'success')
       haptic('success')
-      onCreated?.(podcast.$id)
-      setUrl('')
-      onClose()
+      onCreated?.(podcastId)
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Ошибка создания'
       showToast(msg, 'error')
       haptic('error')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -75,17 +75,12 @@ export function CreatePodcastModal({ open, onClose, onCreated }: CreatePodcastMo
             placeholder="https://youtube.com/watch?v=..."
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            disabled={loading}
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
           />
           {platform === 'youtube' && <Video size={18} className={styles.platformIcon} />}
         </div>
-
-        {loading && (
-          <p className={styles.loadingText}>Конвертируем и загружаем… обычно 20–60 сек</p>
-        )}
 
         <div className={styles.supported}>
           <p className={styles.supportedTitle}>
@@ -100,7 +95,6 @@ export function CreatePodcastModal({ open, onClose, onCreated }: CreatePodcastMo
         <Button
           variant="gold"
           size="lg"
-          loading={loading}
           onClick={handleSubmit}
           className={styles.submit}
         >

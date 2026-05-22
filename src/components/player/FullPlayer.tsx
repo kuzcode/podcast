@@ -12,7 +12,7 @@ import {
   RotateCcw,
   RotateCw,
 } from 'lucide-react'
-import { usePlayerStore, getChapterAt } from '@/store/playerStore'
+import { usePlayerStore, getChapterAt, normalizeChapters } from '@/store/playerStore'
 import { useAuthStore } from '@/store/authStore'
 import { formatDuration } from '@/lib/format'
 import { sharePodcast, haptic } from '@/lib/telegram'
@@ -26,6 +26,7 @@ export function FullPlayer() {
   const setExpanded = usePlayerStore((s) => s.setExpanded)
   const current = usePlayerStore((s) => s.current)
   const isPlaying = usePlayerStore((s) => s.isPlaying)
+  const isLoading = usePlayerStore((s) => s.isLoading)
   const currentTime = usePlayerStore((s) => s.currentTime)
   const duration = usePlayerStore((s) => s.duration)
   const playbackRate = usePlayerStore((s) => s.playbackRate)
@@ -48,7 +49,8 @@ export function FullPlayer() {
 
   const isFav = favoriteIds.has(current.$id)
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
-  const chapter = getChapterAt(currentTime, current.chapters)
+  const chapters = normalizeChapters(current.chapters)
+  const chapter = getChapterAt(currentTime, chapters)
   const settings = user?.settings
 
   const handleSeek = (clientX: number) => {
@@ -111,11 +113,12 @@ export function FullPlayer() {
             <div className={styles.trackInfo}>
               <h1>{current.title}</h1>
               <p>{current.authorName || chapter?.title || 'Atelier'}</p>
+              {isLoading && <p className={styles.loadingLabel}>Загрузка аудио…</p>}
             </div>
 
-            {current.chapters && current.chapters.length > 0 && (
+            {chapters.length > 0 && (
               <div className={styles.chapters}>
-                {current.chapters.map((ch) => (
+                {chapters.map((ch) => (
                   <button
                     key={ch.startSec}
                     className={
